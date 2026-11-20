@@ -14,7 +14,7 @@ const src = dir('/r/src');
 const readme = file('/r/README.md');
 const notes = file('/r/notes.md');
 
-function Harness({ list, handlers }: { list: FsEntry[]; handlers: Record<string, (e: FsEntry) => void> }) {
+function Harness({ list, handlers, onFilter }: { list: FsEntry[]; handlers: Record<string, (e: FsEntry) => void>; onFilter?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const rows = flattenVisibleRows(list, new Map(), new Map(), false);
   const kb = useTreeKeyboard({
@@ -23,7 +23,8 @@ function Harness({ list, handlers }: { list: FsEntry[]; handlers: Record<string,
     onToggle: handlers.toggle!,
     onOpenFile: handlers.open!,
     onRename: handlers.rename!,
-    onDelete: handlers.delete!
+    onDelete: handlers.delete!,
+    onFilter
   });
   return (
     <div ref={ref} role="tree" tabIndex={0} data-testid="tree" onKeyDown={kb.onKeyDown} onClickCapture={kb.onClickCapture}>
@@ -107,5 +108,19 @@ describe('useTreeKeyboard', () => {
     rerender(<Harness list={[src]} handlers={handlers} />);
     expect(tree.querySelector('.kbd-focus')).toBeNull();
     expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
+  });
+});
+
+describe('useTreeKeyboard filter key', () => {
+  it('/ opens the filter when provided and is plain type-ahead input otherwise', () => {
+    const handlers = { toggle: vi.fn(), open: vi.fn(), rename: vi.fn(), delete: vi.fn() };
+    const onFilter = vi.fn();
+    const { getByTestId } = render(<Harness list={[src, readme]} handlers={handlers} onFilter={onFilter} />);
+    fireEvent.keyDown(getByTestId('tree'), { key: '/' });
+    expect(onFilter).toHaveBeenCalledTimes(1);
+    cleanup();
+    const second = render(<Harness list={[src, readme]} handlers={handlers} />);
+    fireEvent.keyDown(second.getByTestId('tree'), { key: '/' });
+    expect(onFilter).toHaveBeenCalledTimes(1);
   });
 });

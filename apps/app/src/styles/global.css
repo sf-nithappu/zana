@@ -42711,3 +42711,18 @@ body.split-frame-guard webview {
   outline: 1px solid var(--accent, currentColor);
   outline-offset: -1px;
 }
+
+.explorer-tree-filter { padding: 4px 8px 2px; border-bottom: 1px solid var(--border); }
+.explorer-tree-filter-row { display: flex; align-items: center; gap: 4px; }
+.explorer-tree-filter-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 6px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.explorer-tree-filter-note { margin: 2px 0 4px; font-size: 11px; color: var(--text-muted, var(--text-secondary)); }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, GitBranch, ListTree, FilePlus, FolderPlus } from 'lucide-react';
+import { RefreshCw, GitBranch, ListTree, FilePlus, FolderPlus, ListFilter } from 'lucide-react';
 import type { Project } from '@zana-ai/zcc-domain/product';
 
 interface ExplorerTreeHeaderProps {
@@ -11,6 +11,9 @@ interface ExplorerTreeHeaderProps {
   onCreateFile: () => void;
   onCreateFolder: () => void;
   onRefresh: () => void;
+  /** Toggles the filter box; omitted when filtering is unavailable. */
+  onToggleFilter?: () => void;
+  filterActive?: boolean;
 }
 
 export function ExplorerTreeHeader({
@@ -21,7 +24,9 @@ export function ExplorerTreeHeader({
   onTreeModeToggle,
   onCreateFile,
   onCreateFolder,
-  onRefresh
+  onRefresh,
+  onToggleFilter,
+  filterActive = false
 }: ExplorerTreeHeaderProps) {
   return (
     <div className="explorer-tree-header">
@@ -48,6 +53,18 @@ export function ExplorerTreeHeader({
           {treeMode !== 'changes' && changedFilesCount > 0 && (
             <span className="opener-btn-badge">{changedFilesCount}</span>
           )}
+        </button>
+      )}
+      {onToggleFilter && (
+        <button
+          type="button"
+          className={`opener-btn ${filterActive ? 'active' : ''}`}
+          title="Filter files"
+          aria-label="Filter files"
+          aria-pressed={filterActive}
+          onClick={onToggleFilter}
+        >
+          <ListFilter size={13} />
         </button>
       )}
       <button

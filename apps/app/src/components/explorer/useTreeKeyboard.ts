@@ -13,6 +13,8 @@ interface Options {
   onOpenFile: (entry: FsEntry) => void;
   onRename: (entry: FsEntry) => void;
   onDelete: (entry: FsEntry) => void;
+  /** `/` opens the filter box when provided. */
+  onFilter?: () => void;
 }
 
 /**
@@ -21,7 +23,7 @@ interface Options {
  * is applied straight to the DOM so moving focus never re-renders the
  * memoised TreeList.
  */
-export function useTreeKeyboard({ rows, bodyRef, onToggle, onOpenFile, onRename, onDelete }: Options) {
+export function useTreeKeyboard({ rows, bodyRef, onToggle, onOpenFile, onRename, onDelete, onFilter }: Options) {
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const buffer = useRef({ text: '', timer: 0 as unknown as ReturnType<typeof setTimeout> });
 
@@ -54,6 +56,11 @@ export function useTreeKeyboard({ rows, bodyRef, onToggle, onOpenFile, onRename,
     // Only the tree itself drives navigation; inputs, menus and modals keep their keys.
     if (e.target !== e.currentTarget) return;
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === '/' && onFilter) {
+      e.preventDefault();
+      onFilter();
+      return;
+    }
     const printable = e.key.length === 1 && e.key !== ' ';
     if (printable) {
       const b = buffer.current;
@@ -77,7 +84,7 @@ export function useTreeKeyboard({ rows, bodyRef, onToggle, onOpenFile, onRename,
       case 'rename': onRename(action.entry); break;
       case 'delete': onDelete(action.entry); break;
     }
-  }, [rows, focusedPath, onToggle, onOpenFile, onRename, onDelete]);
+  }, [rows, focusedPath, onToggle, onOpenFile, onRename, onDelete, onFilter]);
 
   // Clicking a row makes it the keyboard-current row.
   const onClickCapture = useCallback((e: React.MouseEvent<HTMLElement>) => {

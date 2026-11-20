@@ -8,6 +8,8 @@ import { useBooleanPreference } from '../../lib/use-boolean-preference.js';
 import { EXPLORER_COMPACT_FOLDERS_DEFAULT, EXPLORER_COMPACT_FOLDERS_KEY } from '../../lib/explorer-compact-folders-preference.js';
 import { compactAutoExpand } from '../../components/explorer/compact-chain.js';
 import { flattenVisibleRows } from '../../components/explorer/tree-keyboard.js';
+import { ExplorerTreeFilter } from '../../components/explorer/ExplorerTreeFilter.js';
+import { filterLoadedTree } from '../../components/explorer/tree-filter.js';
 import { useTreeKeyboard } from '../../components/explorer/useTreeKeyboard.js';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { FsEntry, GitBranch as GitBranchInfo, GitFileCode, GitShowResult, GitStatus, OpenTarget, FsReadResult, Project, Worktree } from '@zana-ai/zcc-domain/product';
@@ -827,10 +829,31 @@ function CheckoutExplorerView({ project, embedded = false, scope: baseScope, nat
     return () => window.removeEventListener('keydown', onKey, true);
   }, [saveFile]);
 
-  const rootList = entries.get(viewRoot);
+  // Filter-on-type works on a derived view of the loaded tree, so the real
+  // `entries` / `expanded` stay untouched and clearing the filter restores them.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [appliedFilter, setAppliedFilter] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setAppliedFilter(filterQuery), 120);
+    return () => clearTimeout(timer);
+  }, [filterQuery]);
+  const closeFilter = useCallback(() => {
+    setFilterOpen(false);
+    setFilterQuery('');
+    setAppliedFilter('');
+    treeBodyRef.current?.focus();
+  }, []);
+  const filtered = useMemo(
+    () => (filterOpen && appliedFilter.trim() !== '' ? filterLoadedTree(viewRoot, entries, appliedFilter) : null),
+    [filterOpen, appliedFilter, viewRoot, entries]
+  );
+  const treeEntries = filtered?.entries ?? entries;
+  const treeExpanded = filtered?.expanded ?? expanded;
+  const rootList = treeEntries.get(viewRoot);
   const visibleRows = useMemo(
-    () => flattenVisibleRows(rootList, entries, expanded, compactFolders),
-    [rootList, entries, expanded, compactFolders]
+    () => flattenVisibleRows(rootList, treeEntries, treeExpanded, compactFolders),
+    [rootList, treeEntries, treeExpanded, compactFolders]
   );
   const treeKeyboard = useTreeKeyboard({
     rows: visibleRows,
@@ -838,7 +861,8 @@ function CheckoutExplorerView({ project, embedded = false, scope: baseScope, nat
     onToggle: toggleDir,
     onOpenFile: onFileClick,
     onRename: (entry) => renameEntry(entry.path),
-    onDelete: (entry) => { void deleteEntry(entry.path, entry.kind); }
+    onDelete: (entry) => { void deleteEntry(entry.path, entry.kind); },
+    onFilter: () => setFilterOpen(true)
   });
 
   // Show the diff toggle only when the active file is dirty against HEAD.
@@ -968,7 +992,18 @@ function CheckoutExplorerView({ project, embedded = false, scope: baseScope, nat
           onCreateFile={() => createEntry(viewRoot, 'file')}
           onCreateFolder={() => createEntry(viewRoot, 'dir')}
           onRefresh={refresh}
+          onToggleFilter={treeMode === 'files' ? () => (filterOpen ? closeFilter() : setFilterOpen(true)) : undefined}
+          filterActive={filterOpen}
         />
+        {filterOpen && treeMode === 'files' && (
+          <ExplorerTreeFilter
+            query={filterQuery}
+            matchCount={filtered ? filtered.matchCount : null}
+            onChange={setFilterQuery}
+            onClose={closeFilter}
+            onFocusTree={() => treeBodyRef.current?.focus()}
+          />
+        )}
         <div
           className={`explorer-tree-body ${isRemote && treeDropOver ? 'drop-over' : ''}`}
           ref={treeBodyRef}
@@ -1007,13 +1042,13 @@ function CheckoutExplorerView({ project, embedded = false, scope: baseScope, nat
           ) : rootList === undefined ? (
             <DirectoryLoading label="Loading files" slow={slow.has(viewRoot)} />
           ) : rootList.length === 0 ? (
-            <div className="tree-pane-empty">Empty directory.</div>
+            <div className="tree-pane-empty">{filtered ? 'No matching files in opened folders.' : 'Empty directory.'}</div>
           ) : (
             <TreeList
               list={rootList}
               depth={0}
-              expanded={expanded}
-              entries={entries}
+              expanded={treeExpanded}
+              entries={treeEntries}
               loading={loading}
               slow={slow}
               errors={errors}
