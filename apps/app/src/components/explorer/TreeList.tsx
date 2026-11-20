@@ -23,6 +23,11 @@ interface TreeListProps {
   onContext: (e: React.MouseEvent, entry: FsEntry) => void;
 }
 
+/** Stable DOM id for a row, so the tree can point `aria-activedescendant` at it. */
+export function treeRowId(path: string): string {
+  return `tree-row-${encodeURIComponent(path).replace(/%/g, '_')}`;
+}
+
 const GIT_TITLES: Record<GitFileCode, string> = {
   M: 'Modified',
   A: 'Added',
@@ -78,6 +83,11 @@ export const TreeList = React.memo(function TreeList({
               className={`tree-row ${isDir ? 'dir' : 'file'} ${isActive ? 'active' : ''} ${gitClass}`}
               style={{ paddingLeft: 6 + depth * 12 }}
               data-path={entry.path}
+              id={treeRowId(entry.path)}
+              role="treeitem"
+              aria-level={depth + 1}
+              aria-expanded={isDir ? isOpen : undefined}
+              aria-selected={isActive}
               aria-current={isActive ? 'true' : undefined}
               onClick={() => {
                 if (consumeFsEntryDragClick()) return;

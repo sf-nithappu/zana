@@ -42705,3 +42705,9 @@ body.split-frame-guard webview {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+.explorer-tree-body:focus-visible { outline: none; }
+.tree-row.kbd-focus {
+  outline: 1px solid var(--accent, currentColor);
+  outline-offset: -1px;
+}

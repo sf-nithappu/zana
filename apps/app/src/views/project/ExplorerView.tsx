@@ -7,6 +7,8 @@ import { parentPath, relativeUnder } from '../../lib/path.js';
 import { useBooleanPreference } from '../../lib/use-boolean-preference.js';
 import { EXPLORER_COMPACT_FOLDERS_DEFAULT, EXPLORER_COMPACT_FOLDERS_KEY } from '../../lib/explorer-compact-folders-preference.js';
 import { compactAutoExpand } from '../../components/explorer/compact-chain.js';
+import { flattenVisibleRows } from '../../components/explorer/tree-keyboard.js';
+import { useTreeKeyboard } from '../../components/explorer/useTreeKeyboard.js';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { FsEntry, GitBranch as GitBranchInfo, GitFileCode, GitShowResult, GitStatus, OpenTarget, FsReadResult, Project, Worktree } from '@zana-ai/zcc-domain/product';
 import { useData, useUi } from '@/store';
@@ -826,6 +828,18 @@ function CheckoutExplorerView({ project, embedded = false, scope: baseScope, nat
   }, [saveFile]);
 
   const rootList = entries.get(viewRoot);
+  const visibleRows = useMemo(
+    () => flattenVisibleRows(rootList, entries, expanded, compactFolders),
+    [rootList, entries, expanded, compactFolders]
+  );
+  const treeKeyboard = useTreeKeyboard({
+    rows: visibleRows,
+    bodyRef: treeBodyRef,
+    onToggle: toggleDir,
+    onOpenFile: onFileClick,
+    onRename: (entry) => renameEntry(entry.path),
+    onDelete: (entry) => { void deleteEntry(entry.path, entry.kind); }
+  });
 
   // Show the diff toggle only when the active file is dirty against HEAD.
   // Untracked is included so reviewers can see "all of this is new".
@@ -958,6 +972,13 @@ function CheckoutExplorerView({ project, embedded = false, scope: baseScope, nat
         <div
           className={`explorer-tree-body ${isRemote && treeDropOver ? 'drop-over' : ''}`}
           ref={treeBodyRef}
+          {...(treeMode === 'files' && rootList !== undefined ? {
+            role: 'tree',
+            tabIndex: 0,
+            'aria-label': 'Files',
+            onKeyDown: treeKeyboard.onKeyDown,
+            onClickCapture: treeKeyboard.onClickCapture
+          } : {})}
           {...(isRemote ? treeDropHandlers : {})}
           title={isRemote ? 'Drop files here to upload to the remote host' : undefined}
         >
